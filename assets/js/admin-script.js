@@ -1,96 +1,127 @@
 /**
  * Wild Dragon SEO - Admin Dashboard JavaScript
- * Enhanced interactions and user experience
+ * Pure Vanilla JavaScript - Lightning Fast Performance
  */
 
-jQuery(document).ready(function($) {
+document.addEventListener('DOMContentLoaded', function() {
     'use strict';
 
-    // Initialize dashboard enhancements
+    // Initialize all functionality
     initDashboardEnhancements();
     initFormValidation();
     initTooltips();
     initAnimations();
+    initTabPersistence();
+    initQuickActions();
 
     /**
      * Initialize dashboard enhancements
      */
     function initDashboardEnhancements() {
         // Add loading states to form submissions
-        $('form.wdseo-form').on('submit', function() {
-            const $form = $(this);
-            const $submitBtn = $form.find('input[type="submit"]');
-            
-            $submitBtn.prop('disabled', true);
-            $submitBtn.val('Saving...');
-            $form.addClass('wdseo-loading');
+        const forms = document.querySelectorAll('form.wdseo-form');
+        forms.forEach(function(form) {
+            form.addEventListener('submit', function() {
+                const submitBtn = form.querySelector('input[type="submit"]');
+                
+                if (submitBtn) {
+                    submitBtn.disabled = true;
+                    submitBtn.value = 'Saving...';
+                    form.classList.add('wdseo-loading');
+                }
+            });
         });
 
         // Auto-save indication
         let saveTimeout;
-        $('form.wdseo-form input, form.wdseo-form select, form.wdseo-form textarea').on('change', function() {
-            clearTimeout(saveTimeout);
-            
-            // Show unsaved changes indicator
-            if (!$('.wdseo-unsaved-notice').length) {
-                $('<div class="wdseo-notice wdseo-notice-warning wdseo-unsaved-notice">' +
-                  '<strong>⚠️ Unsaved Changes</strong> - Don\'t forget to save your settings!' +
-                  '</div>').insertAfter('.nav-tab-wrapper');
-            }
+        const formInputs = document.querySelectorAll('form.wdseo-form input, form.wdseo-form select, form.wdseo-form textarea');
+        
+        formInputs.forEach(function(input) {
+            input.addEventListener('change', function() {
+                clearTimeout(saveTimeout);
+                
+                // Show unsaved changes indicator
+                if (!document.querySelector('.wdseo-unsaved-notice')) {
+                    const notice = document.createElement('div');
+                    notice.className = 'wdseo-notice wdseo-notice-warning wdseo-unsaved-notice';
+                    notice.innerHTML = '<strong>⚠️ Unsaved Changes</strong> - Don\'t forget to save your settings!';
+                    
+                    const navWrapper = document.querySelector('.nav-tab-wrapper');
+                    if (navWrapper) {
+                        navWrapper.insertAdjacentElement('afterend', notice);
+                    }
+                }
+            });
         });
 
         // Remove unsaved notice on form submit
-        $('form.wdseo-form').on('submit', function() {
-            $('.wdseo-unsaved-notice').remove();
+        forms.forEach(function(form) {
+            form.addEventListener('submit', function() {
+                const notice = document.querySelector('.wdseo-unsaved-notice');
+                if (notice) {
+                    notice.remove();
+                }
+            });
         });
 
         // Character counter for textareas
-        $('textarea[name*="description"]').each(function() {
-            addCharacterCounter($(this));
+        const descriptionTextareas = document.querySelectorAll('textarea[name*="description"]');
+        descriptionTextareas.forEach(function(textarea) {
+            addCharacterCounter(textarea);
         });
 
         // Enhanced checkbox interactions
-        $('input[type="checkbox"]').on('change', function() {
-            const $this = $(this);
-            const $label = $this.closest('label');
-            
-            if ($this.is(':checked')) {
-                $label.addClass('wdseo-checked');
-            } else {
-                $label.removeClass('wdseo-checked');
-            }
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        checkboxes.forEach(function(checkbox) {
+            checkbox.addEventListener('change', function() {
+                const label = checkbox.closest('label');
+                
+                if (checkbox.checked) {
+                    label.classList.add('wdseo-checked');
+                } else {
+                    label.classList.remove('wdseo-checked');
+                }
+            });
         });
 
         // Initialize checked state
-        $('input[type="checkbox"]:checked').closest('label').addClass('wdseo-checked');
+        const checkedBoxes = document.querySelectorAll('input[type="checkbox"]:checked');
+        checkedBoxes.forEach(function(checkbox) {
+            const label = checkbox.closest('label');
+            if (label) {
+                label.classList.add('wdseo-checked');
+            }
+        });
     }
 
     /**
      * Add character counter to textarea
      */
-    function addCharacterCounter($textarea) {
+    function addCharacterCounter(textarea) {
         const maxLength = 160; // Standard meta description length
-        const $counter = $('<div class="wdseo-char-counter"></div>');
+        const counter = document.createElement('div');
+        counter.className = 'wdseo-char-counter';
         
-        $textarea.after($counter);
+        textarea.insertAdjacentElement('afterend', counter);
         
         function updateCounter() {
-            const length = $textarea.val().length;
+            const length = textarea.value.length;
             const remaining = maxLength - length;
             
             let status = 'good';
             if (length > maxLength) status = 'over';
             else if (length > maxLength * 0.9) status = 'warning';
             
-            $counter.html(`
+            counter.innerHTML = `
                 <span class="wdseo-char-count wdseo-char-${status}">
                     ${length} characters
                     ${remaining < 0 ? `(${Math.abs(remaining)} over limit)` : `(${remaining} remaining)`}
                 </span>
-            `);
+            `;
         }
         
-        $textarea.on('input keyup', updateCounter);
+        textarea.addEventListener('input', updateCounter);
+        textarea.addEventListener('keyup', updateCounter);
         updateCounter();
     }
 
@@ -99,51 +130,71 @@ jQuery(document).ready(function($) {
      */
     function initFormValidation() {
         // Twitter handle validation
-        $('input[name="wdseo_twitter_site_handle"]').on('input', function() {
-            const $input = $(this);
-            const value = $input.val();
-            
-            if (value && !value.startsWith('@')) {
-                $input.val('@' + value);
-            }
-            
-            // Validate Twitter handle format
-            const isValid = /^@[A-Za-z0-9_]{1,15}$/.test(value);
-            
-            if (value && !isValid) {
-                $input.addClass('wdseo-invalid');
-                if (!$input.next('.wdseo-validation-error').length) {
-                    $input.after('<div class="wdseo-validation-error">Please enter a valid Twitter handle (e.g., @username)</div>');
+        const twitterInput = document.querySelector('input[name="wdseo_twitter_site_handle"]');
+        if (twitterInput) {
+            twitterInput.addEventListener('input', function() {
+                const value = twitterInput.value;
+                
+                if (value && !value.startsWith('@')) {
+                    twitterInput.value = '@' + value;
                 }
-            } else {
-                $input.removeClass('wdseo-invalid');
-                $input.next('.wdseo-validation-error').remove();
-            }
-        });
-
-        // URL pattern validation
-        $('textarea[name="wdseo_robots_blocked_urls"]').on('input', function() {
-            const $textarea = $(this);
-            const lines = $textarea.val().split('\n');
-            let hasErrors = false;
-            
-            lines.forEach(function(line, index) {
-                line = line.trim();
-                if (line && !line.startsWith('/')) {
-                    hasErrors = true;
+                
+                // Validate Twitter handle format
+                const isValid = /^@[A-Za-z0-9_]{1,15}$/.test(value);
+                
+                if (value && !isValid) {
+                    twitterInput.classList.add('wdseo-invalid');
+                    
+                    let errorDiv = twitterInput.nextElementSibling;
+                    if (!errorDiv || !errorDiv.classList.contains('wdseo-validation-error')) {
+                        errorDiv = document.createElement('div');
+                        errorDiv.className = 'wdseo-validation-error';
+                        errorDiv.textContent = 'Please enter a valid Twitter handle (e.g., @username)';
+                        twitterInput.insertAdjacentElement('afterend', errorDiv);
+                    }
+                } else {
+                    twitterInput.classList.remove('wdseo-invalid');
+                    const errorDiv = twitterInput.nextElementSibling;
+                    if (errorDiv && errorDiv.classList.contains('wdseo-validation-error')) {
+                        errorDiv.remove();
+                    }
                 }
             });
-            
-            if (hasErrors) {
-                $textarea.addClass('wdseo-invalid');
-                if (!$textarea.next('.wdseo-validation-error').length) {
-                    $textarea.after('<div class="wdseo-validation-error">URL patterns should start with / (e.g., /admin/*)</div>');
+        }
+
+        // URL pattern validation
+        const robotsTextarea = document.querySelector('textarea[name="wdseo_robots_blocked_urls"]');
+        if (robotsTextarea) {
+            robotsTextarea.addEventListener('input', function() {
+                const lines = robotsTextarea.value.split('\n');
+                let hasErrors = false;
+                
+                lines.forEach(function(line) {
+                    line = line.trim();
+                    if (line && !line.startsWith('/')) {
+                        hasErrors = true;
+                    }
+                });
+                
+                if (hasErrors) {
+                    robotsTextarea.classList.add('wdseo-invalid');
+                    
+                    let errorDiv = robotsTextarea.nextElementSibling;
+                    if (!errorDiv || !errorDiv.classList.contains('wdseo-validation-error')) {
+                        errorDiv = document.createElement('div');
+                        errorDiv.className = 'wdseo-validation-error';
+                        errorDiv.textContent = 'URL patterns should start with / (e.g., /admin/*)';
+                        robotsTextarea.insertAdjacentElement('afterend', errorDiv);
+                    }
+                } else {
+                    robotsTextarea.classList.remove('wdseo-invalid');
+                    const errorDiv = robotsTextarea.nextElementSibling;
+                    if (errorDiv && errorDiv.classList.contains('wdseo-validation-error')) {
+                        errorDiv.remove();
+                    }
                 }
-            } else {
-                $textarea.removeClass('wdseo-invalid');
-                $textarea.next('.wdseo-validation-error').remove();
-            }
-        });
+            });
+        }
     }
 
     /**
@@ -151,20 +202,32 @@ jQuery(document).ready(function($) {
      */
     function initTooltips() {
         // Add tooltips to feature icons
-        $('.wdseo-feature-icon').each(function() {
-            const $icon = $(this);
-            const $row = $icon.closest('tr');
-            const description = $row.find('.description').text();
-            
-            if (description) {
-                $icon.attr('title', description);
+        const featureIcons = document.querySelectorAll('.wdseo-feature-icon');
+        featureIcons.forEach(function(icon) {
+            const row = icon.closest('tr');
+            if (row) {
+                const description = row.querySelector('.description');
+                if (description) {
+                    icon.setAttribute('title', description.textContent);
+                }
             }
         });
 
         // Add tooltips to status indicators
-        $('.wdseo-status-enabled').attr('title', 'This feature is active and working');
-        $('.wdseo-status-disabled').attr('title', 'This feature is currently disabled');
-        $('.wdseo-status-warning').attr('title', 'This feature needs attention');
+        const enabledStatus = document.querySelectorAll('.wdseo-status-enabled');
+        enabledStatus.forEach(function(status) {
+            status.setAttribute('title', 'This feature is active and working');
+        });
+
+        const disabledStatus = document.querySelectorAll('.wdseo-status-disabled');
+        disabledStatus.forEach(function(status) {
+            status.setAttribute('title', 'This feature is currently disabled');
+        });
+
+        const warningStatus = document.querySelectorAll('.wdseo-status-warning');
+        warningStatus.forEach(function(status) {
+            status.setAttribute('title', 'This feature needs attention');
+        });
     }
 
     /**
@@ -172,77 +235,63 @@ jQuery(document).ready(function($) {
      */
     function initAnimations() {
         // Animate form sections on tab change
-        $('.nav-tab').on('click', function(e) {
-            const $form = $('.wdseo-form');
-            
-            $form.css('opacity', '0.7');
-            
-            setTimeout(function() {
-                $form.css('opacity', '1');
-            }, 150);
+        const navTabs = document.querySelectorAll('.nav-tab');
+        navTabs.forEach(function(tab) {
+            tab.addEventListener('click', function(e) {
+                const form = document.querySelector('.wdseo-form');
+                if (form) {
+                    form.style.opacity = '0.7';
+                    
+                    setTimeout(function() {
+                        form.style.opacity = '1';
+                    }, 150);
+                }
+            });
         });
 
-        // Animate success messages
-        $(document).on('DOMNodeInserted', '.notice-success', function() {
-            $(this).hide().fadeIn(300);
+        // Animate success messages using MutationObserver
+        const observer = new MutationObserver(function(mutations) {
+            mutations.forEach(function(mutation) {
+                mutation.addedNodes.forEach(function(node) {
+                    if (node.nodeType === 1 && node.classList && node.classList.contains('notice-success')) {
+                        node.style.display = 'none';
+                        fadeIn(node, 300);
+                    }
+                });
+            });
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
         });
 
         // Smooth scroll to validation errors
-        $(document).on('click', '.wdseo-validation-error', function() {
-            const $error = $(this);
-            const $input = $error.prev('input, textarea, select');
-            
-            $('html, body').animate({
-                scrollTop: $input.offset().top - 100
-            }, 300);
-            
-            $input.focus();
-        });
-    }
-
-    /**
-     * Add dynamic help text
-     */
-    function addDynamicHelp() {
-        // Robots meta help
-        $('select[name*="robots"]').on('change', function() {
-            const $select = $(this);
-            const value = $select.val();
-            let helpText = '';
-            
-            switch(value) {
-                case 'index,follow':
-                    helpText = '✅ Search engines will index this content and follow links';
-                    break;
-                case 'noindex,nofollow':
-                    helpText = '🚫 Search engines will not index this content or follow links';
-                    break;
-                case 'index,nofollow':
-                    helpText = '📄 Search engines will index this content but not follow links';
-                    break;
-                case 'noindex,follow':
-                    helpText = '🔗 Search engines will not index this content but will follow links';
-                    break;
-            }
-            
-            $select.next('.wdseo-dynamic-help').remove();
-            if (helpText) {
-                $select.after(`<div class="wdseo-dynamic-help">${helpText}</div>`);
+        document.addEventListener('click', function(e) {
+            if (e.target.classList.contains('wdseo-validation-error')) {
+                const input = e.target.previousElementSibling;
+                if (input && (input.tagName === 'INPUT' || input.tagName === 'TEXTAREA' || input.tagName === 'SELECT')) {
+                    smoothScrollTo(input, 300);
+                    input.focus();
+                }
             }
         });
     }
-
-    // Initialize dynamic help
-    addDynamicHelp();
 
     /**
      * Tab persistence
      */
     function initTabPersistence() {
         // Save current tab to localStorage
-        $('.nav-tab').on('click', function() {
-            const tabId = $(this).attr('href').split('tab=')[1];
-            localStorage.setItem('wdseo_current_tab', tabId);
+        const navTabs = document.querySelectorAll('.nav-tab');
+        navTabs.forEach(function(tab) {
+            tab.addEventListener('click', function() {
+                const href = tab.getAttribute('href');
+                if (href && href.includes('tab=')) {
+                    const tabId = href.split('tab=')[1];
+                    localStorage.setItem('wdseo_current_tab', tabId);
+                }
+            });
         });
 
         // Restore tab on page load
@@ -253,29 +302,121 @@ jQuery(document).ready(function($) {
         }
     }
 
-    initTabPersistence();
-
     /**
      * Quick actions
      */
     function initQuickActions() {
         // Quick enable/disable toggles
-        $('.wdseo-quick-toggle').on('click', function(e) {
-            e.preventDefault();
-            
-            const $toggle = $(this);
-            const $checkbox = $toggle.data('target');
-            
-            $($checkbox).prop('checked', !$($checkbox).is(':checked')).trigger('change');
-            
-            // Update toggle text
-            const isChecked = $($checkbox).is(':checked');
-            $toggle.text(isChecked ? 'Disable' : 'Enable');
-            $toggle.toggleClass('wdseo-enabled', isChecked);
+        const quickToggles = document.querySelectorAll('.wdseo-quick-toggle');
+        quickToggles.forEach(function(toggle) {
+            toggle.addEventListener('click', function(e) {
+                e.preventDefault();
+                
+                const targetSelector = toggle.getAttribute('data-target');
+                const targetCheckbox = document.querySelector(targetSelector);
+                
+                if (targetCheckbox) {
+                    targetCheckbox.checked = !targetCheckbox.checked;
+                    targetCheckbox.dispatchEvent(new Event('change'));
+                    
+                    // Update toggle text
+                    const isChecked = targetCheckbox.checked;
+                    toggle.textContent = isChecked ? 'Disable' : 'Enable';
+                    toggle.classList.toggle('wdseo-enabled', isChecked);
+                }
+            });
         });
     }
 
-    initQuickActions();
+    /**
+     * Add dynamic help text
+     */
+    function addDynamicHelp() {
+        // Robots meta help
+        const robotsSelects = document.querySelectorAll('select[name*="robots"]');
+        robotsSelects.forEach(function(select) {
+            select.addEventListener('change', function() {
+                const value = select.value;
+                let helpText = '';
+                
+                switch(value) {
+                    case 'index,follow':
+                        helpText = '✅ Search engines will index this content and follow links';
+                        break;
+                    case 'noindex,nofollow':
+                        helpText = '🚫 Search engines will not index this content or follow links';
+                        break;
+                    case 'index,nofollow':
+                        helpText = '📄 Search engines will index this content but not follow links';
+                        break;
+                    case 'noindex,follow':
+                        helpText = '🔗 Search engines will not index this content but will follow links';
+                        break;
+                }
+                
+                const existingHelp = select.nextElementSibling;
+                if (existingHelp && existingHelp.classList.contains('wdseo-dynamic-help')) {
+                    existingHelp.remove();
+                }
+                
+                if (helpText) {
+                    const helpDiv = document.createElement('div');
+                    helpDiv.className = 'wdseo-dynamic-help';
+                    helpDiv.innerHTML = helpText;
+                    select.insertAdjacentElement('afterend', helpDiv);
+                }
+            });
+        });
+    }
+
+    // Initialize dynamic help
+    addDynamicHelp();
+
+    /**
+     * Utility Functions
+     */
+    function fadeIn(element, duration) {
+        element.style.display = 'block';
+        element.style.opacity = '0';
+        
+        const start = performance.now();
+        
+        function animate(currentTime) {
+            const elapsed = currentTime - start;
+            const progress = Math.min(elapsed / duration, 1);
+            
+            element.style.opacity = progress;
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            }
+        }
+        
+        requestAnimationFrame(animate);
+    }
+
+    function smoothScrollTo(element, duration) {
+        const targetPosition = element.offsetTop - 100;
+        const startPosition = window.pageYOffset;
+        const distance = targetPosition - startPosition;
+        const startTime = performance.now();
+
+        function animation(currentTime) {
+            const timeElapsed = currentTime - startTime;
+            const progress = Math.min(timeElapsed / duration, 1);
+            
+            // Easing function
+            const ease = progress * (2 - progress);
+            
+            window.scrollTo(0, startPosition + (distance * ease));
+            
+            if (progress < 1) {
+                requestAnimationFrame(animation);
+            }
+        }
+
+        requestAnimationFrame(animation);
+    }
 });
 
 // Add custom CSS for JavaScript enhancements

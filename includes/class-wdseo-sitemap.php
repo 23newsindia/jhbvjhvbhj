@@ -97,6 +97,11 @@ class Wdseo_Sitemap {
             'type' => 'array',
             'default' => array('post'),
         ));
+
+        register_setting('wdseo_settings_group', 'wdseo_news_categories', array(
+            'type' => 'array',
+            'default' => array(),
+        ));
     }
 
     public static function prevent_sitemap_trailing_slash($redirect_url, $requested_url) {
@@ -538,8 +543,9 @@ class Wdseo_Sitemap {
         $publication_name = get_option('wdseo_news_publication_name', get_bloginfo('name'));
         $publication_language = get_option('wdseo_news_publication_language', 'en');
         $news_post_types = get_option('wdseo_news_post_types', array('post'));
+        $news_categories = get_option('wdseo_news_categories', array());
 
-        // Get posts from last 48 hours (Google News requirement)
+        // Build query args
         $query_args = array(
             'post_type' => $news_post_types,
             'post_status' => 'publish',
@@ -552,6 +558,11 @@ class Wdseo_Sitemap {
             'orderby' => 'date',
             'order' => 'DESC',
         );
+
+        // Add category filter if categories are selected
+        if (!empty($news_categories)) {
+            $query_args['cat'] = implode(',', $news_categories);
+        }
 
         $query = new WP_Query($query_args);
 
@@ -994,6 +1005,10 @@ class Wdseo_Sitemap {
     }
 
     public static function clear_sitemap_cache($post_id, $post) {
+        self::clear_all_caches();
+    }
+
+    public static function clear_all_caches() {
         // Clear all sitemap caches
         $cache_keys = array(
             'wdseo_sitemap_index',

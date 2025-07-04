@@ -57,8 +57,14 @@ class Wdseo_Settings {
         // Enhanced CSS
         wp_enqueue_style('wdseo-admin-style', WDSEO_PLUGIN_URL . 'assets/css/admin-style.css', array(), WDSEO_VERSION);
         
-        // Add custom admin JavaScript for enhanced interactions
-        wp_enqueue_script('wdseo-admin-script', WDSEO_PLUGIN_URL . 'assets/js/admin-script.js', array('jquery'), WDSEO_VERSION, true);
+        // Add custom admin JavaScript for enhanced interactions (NO JQUERY)
+        wp_enqueue_script('wdseo-admin-script', WDSEO_PLUGIN_URL . 'assets/js/admin-script.js', array(), WDSEO_VERSION, true);
+        
+        // Localize script for AJAX
+        wp_localize_script('wdseo-admin-script', 'wdseo_admin_vars', array(
+            'ajax_url' => admin_url('admin-ajax.php'),
+            'nonce' => wp_create_nonce('wdseo_admin_nonce')
+        ));
     }
 
     // Get setting with caching
@@ -80,7 +86,7 @@ class Wdseo_Settings {
     }
 
     public static function register_settings() {
-        // Title settings
+        // Register settings group
         register_setting('wdseo_settings_group', 'wdseo_enable_meta_description', array(
             'type' => 'boolean',
             'default' => 1,
@@ -111,7 +117,6 @@ class Wdseo_Settings {
         }
 
         $special_pages = array('author_archives', 'user_profiles', 'home');
-
         $items_to_register = array_merge($post_types, $taxonomies, $special_pages);
 
         foreach ($items_to_register as $item) {
@@ -193,6 +198,12 @@ class Wdseo_Settings {
             'sanitize_callback' => array(__CLASS__, 'sanitize_post_types_array')
         ));
 
+        register_setting('wdseo_settings_group', 'wdseo_news_categories', array(
+            'type' => 'array',
+            'default' => array(),
+            'sanitize_callback' => array(__CLASS__, 'sanitize_categories_array')
+        ));
+
         // Video sitemap settings
         register_setting('wdseo_settings_group', 'wdseo_video_sitemap_enabled', array(
             'type' => 'boolean',
@@ -204,11 +215,7 @@ class Wdseo_Settings {
     public static function render_settings_page() {
         $tab = isset($_GET['tab']) ? sanitize_key($_GET['tab']) : 'general';
         
-        // Handle form submission
-        if (isset($_POST['submit']) && wp_verify_nonce($_POST['wdseo_settings_nonce'], 'wdseo_settings_nonce')) {
-            self::save_settings();
-            echo '<div class="notice notice-success is-dismissible"><p><strong>✅ Settings saved successfully!</strong></p></div>';
-        }
+        // Handle form submission using WordPress options.php
         ?>
         <div class="wrap wdseo-settings">
             <h1>Wild Dragon SEO</h1>
@@ -223,9 +230,10 @@ class Wdseo_Settings {
                 <?php endforeach; ?>
             </nav>
 
-            <form action="" method="post" class="wdseo-form">
+            <form action="options.php" method="post" class="wdseo-form">
                 <?php
-                wp_nonce_field('wdseo_settings_nonce', 'wdseo_settings_nonce');
+                // Use WordPress settings API
+                settings_fields('wdseo_settings_group');
                 
                 // Only render the content for the current tab
                 switch ($tab):
@@ -250,102 +258,6 @@ class Wdseo_Settings {
             </form>
         </div>
         <?php
-    }
-
-    public static function save_settings() {
-        // Handle all form fields manually
-        $fields_to_save = array(
-            // Title settings
-            'wdseo_enable_meta_description' => 'checkbox',
-            'wdseo_remove_site_name_from_title' => 'array',
-            
-            // Social settings
-            'wdseo_twitter_site_handle' => 'text',
-            
-            // Robots blocked URLs
-            'wdseo_robots_blocked_urls' => 'textarea',
-            
-            // News sitemap
-            'wdseo_news_sitemap_enabled' => 'checkbox',
-            'wdseo_news_publication_name' => 'text',
-            'wdseo_news_publication_language' => 'text',
-            'wdseo_news_post_types' => 'array',
-            
-            // Video sitemap
-            'wdseo_video_sitemap_enabled' => 'checkbox',
-        );
-
-        // Get all post types and taxonomies for robots settings
-        $post_types = get_post_types(array('public' => true));
-        $taxonomies = get_taxonomies(array('public' => true));
-        
-        // Add WooCommerce types if active
-        if (class_exists('WooCommerce')) {
-            $post_types[] = 'product';
-            $taxonomies[] = 'product_cat';
-            $taxonomies[] = 'product_tag';
-        }
-        
-        $special_pages = array('author_archives', 'user_profiles', 'home');
-        $all_types = array_merge($post_types, $taxonomies, $special_pages);
-
-        // Add robots settings for all types
-        foreach ($all_types as $type) {
-            $fields_to_save["wdseo_default_robots_{$type}"] = 'robots';
-        }
-
-        // Add sitemap settings for content types
-        $content_types = array('homepage', 'post', 'page', 'category');
-        if (class_exists('WooCommerce')) {
-            $content_types[] = 'product';
-            $content_types[] = 'product_cat';
-        }
-
-        foreach ($content_types as $type) {
-            $fields_to_save["wdseo_sitemap_{$type}_include"] = 'checkbox';
-            $fields_to_save["wdseo_sitemap_{$type}_frequency"] = 'text';
-            $fields_to_save["wdseo_sitemap_{$type}_priority"] = 'priority';
-        }
-
-        // Process all fields
-        foreach ($fields_to_save as $field_name => $field_type) {
-            switch ($field_type) {
-                case 'checkbox':
-                    $value = isset($_POST[$field_name]) ? 1 : 0;
-                    break;
-                    
-                case 'array':
-                    $value = isset($_POST[$field_name]) && is_array($_POST[$field_name]) ? $_POST[$field_name] : array();
-                    if ($field_name === 'wdseo_remove_site_name_from_title') {
-                        $value = self::sanitize_remove_site_name_from_title($value);
-                    } elseif ($field_name === 'wdseo_news_post_types') {
-                        $value = self::sanitize_post_types_array($value);
-                    }
-                    break;
-                    
-                case 'robots':
-                    $value = isset($_POST[$field_name]) ? self::sanitize_robots_directive($_POST[$field_name]) : 'index,follow';
-                    break;
-                    
-                case 'priority':
-                    $value = isset($_POST[$field_name]) ? self::sanitize_priority($_POST[$field_name]) : '0.8';
-                    break;
-                    
-                case 'textarea':
-                    $value = isset($_POST[$field_name]) ? self::sanitize_textarea_input($_POST[$field_name]) : '';
-                    break;
-                    
-                case 'text':
-                default:
-                    $value = isset($_POST[$field_name]) ? sanitize_text_field($_POST[$field_name]) : '';
-                    break;
-            }
-            
-            update_option($field_name, $value);
-        }
-        
-        // Clear settings cache
-        self::$settings_cache = array();
     }
 
     public static function render_sitemap_section() {
@@ -461,6 +373,7 @@ class Wdseo_Settings {
         $news_publication_name = get_option('wdseo_news_publication_name', get_bloginfo('name'));
         $news_language = get_option('wdseo_news_publication_language', 'en');
         $news_post_types = get_option('wdseo_news_post_types', array('post'));
+        $news_categories = get_option('wdseo_news_categories', array());
 
         echo '<table class="form-table" role="presentation"><tbody>';
         
@@ -532,6 +445,26 @@ class Wdseo_Settings {
         }
 
         echo '      <p class="description">Select which post types should be included in the news sitemap.</p>
+                    </fieldset>
+                </td>
+              </tr>';
+
+        // News Categories Selection
+        echo '<tr>
+                <th scope="row">News Categories</th>
+                <td>
+                    <fieldset>';
+
+        $categories = get_categories(array('hide_empty' => false));
+        foreach ($categories as $category) {
+            $checked = in_array($category->term_id, $news_categories);
+            echo '<label style="display: block; margin-bottom: 8px;">
+                    <input type="checkbox" name="wdseo_news_categories[]" value="' . esc_attr($category->term_id) . '" ' . checked($checked, true, false) . '>
+                    ' . esc_html($category->name) . ' (' . $category->count . ' posts)
+                  </label>';
+        }
+
+        echo '      <p class="description">Select which categories contain news articles. Only posts in these categories will be included in the news sitemap.</p>
                     </fieldset>
                 </td>
               </tr>';
@@ -888,10 +821,6 @@ class Wdseo_Settings {
                                 <strong>✓ Twitter Cards</strong><br>
                                 <small style="color: var(--wdseo-gray-600);">Enhanced Twitter sharing with rich media</small>
                             </div>
-                            <div style="padding: 16px; background: var(--wdseo-gray-50); border-radius: 8px; border-left: 4px solid var(--wdseo-success);">
-                                <strong>✓ Schema Markup</strong><br>
-                                <small style="color: var(--wdseo-gray-600);">Structured data for better search results</small>
-                            </div>
                         </div>
                     </td>
                 </tr>
@@ -919,12 +848,6 @@ class Wdseo_Settings {
         }
 
         echo '</select>';
-    }
-
-    public static function render_sitemap_checkbox($args) {
-        $type = $args['type_key'];
-        $checked = get_option("wdseo_sitemap_{$type}_include", true);
-        echo "<input type=\"checkbox\" name=\"wdseo_sitemap_{$type}_include\" id=\"wdseo_sitemap_{$type}_include\" value=\"1\" " . checked($checked, true, false) . " />";
     }
 
     // Sanitization functions
@@ -967,6 +890,22 @@ class Wdseo_Settings {
         foreach ($input as $post_type) {
             if (in_array($post_type, $available_post_types)) {
                 $sanitized[] = sanitize_key($post_type);
+            }
+        }
+
+        return $sanitized;
+    }
+
+    public static function sanitize_categories_array($input) {
+        if (!is_array($input)) {
+            return array();
+        }
+
+        $sanitized = array();
+        foreach ($input as $category_id) {
+            $category_id = intval($category_id);
+            if ($category_id > 0 && term_exists($category_id, 'category')) {
+                $sanitized[] = $category_id;
             }
         }
 
